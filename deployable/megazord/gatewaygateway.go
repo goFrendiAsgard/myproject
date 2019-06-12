@@ -1,0 +1,24 @@
+package main
+
+import (
+	"github.com/state-alchemists/ayanami/config"
+	"github.com/state-alchemists/ayanami/gateway"
+	"github.com/state-alchemists/ayanami/msgbroker"
+	"log"
+)
+
+// GatewayGateway declaration
+func GatewayGateway() {
+	routes := []string{ // define your routes here
+		"/",
+		"/hello/",
+		"/banner/",
+	}
+	broker, err := msgbroker.NewNats(config.GetNatsURL())
+	if err != nil {
+		log.Fatal(err)
+	}
+	port := config.GetGatewayPort()
+	multipartFormLimit := config.GetGatewayMultipartFormLimit()
+	gateway.Serve(broker, port, multipartFormLimit, routes)
+}

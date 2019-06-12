@@ -1,0 +1,39 @@
+{{ define "flow.main.go" }}
+package main
+
+{{ $repoName := .RepoName }}
+import (
+	"github.com/state-alchemists/ayanami/config"
+	"github.com/state-alchemists/ayanami/msgbroker"
+	"github.com/state-alchemists/ayanami/service"
+	"log"{{ range .Packages }}
+	"{{$repoName}}/{{.}}"{{ end }}
+)
+
+// {{.MainFunctionName}} declaration
+func {{.MainFunctionName}}() {
+	// define broker
+	broker, err := msgbroker.NewNats(config.GetNatsURL())
+	if err != nil {
+		log.Fatal(err)
+	}
+	// define services
+	services := service.Services{
+		service.NewFlow("{{.FlowName}}", broker,
+			// inputs
+			[]string{ {{.Inputs}} },
+			// outputs
+			[]string{ {{.Outputs}} },
+			[]service.FlowEvent{ {{ range .Events }}
+				{ {{ range $key, $val := . }}
+					{{$key}}: {{$val}},{{ end }}
+				},{{end}}
+			},
+		),
+	}
+	// consume and publish forever
+	forever := make(chan bool)
+	services.ConsumeAndPublish(broker, "flow")
+	<-forever
+}
+{{ end }}

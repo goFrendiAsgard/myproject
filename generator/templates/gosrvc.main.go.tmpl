@@ -1,0 +1,34 @@
+{{ define "gosrvc.main.go" }}
+package main
+
+{{ $repoName := .RepoName }}
+import (
+	"github.com/state-alchemists/ayanami/config"
+	"github.com/state-alchemists/ayanami/msgbroker"
+	"github.com/state-alchemists/ayanami/service"
+	"log"{{ range .Packages }}
+	"{{$repoName}}/{{.}}"{{ end }}
+)
+
+// {{.MainFunctionName}} declaration
+func {{.MainFunctionName}}() {
+	serviceName := "{{.ServiceName}}"
+	// define broker
+	broker, err := msgbroker.NewNats(config.GetNatsURL())
+	if err != nil {
+		log.Fatal(err)
+	}
+	// define services
+	services := service.Services{ {{ range $methodName, $function := .Functions }}
+		service.NewService(serviceName, "{{$methodName}}",
+			[]string{ {{$function.JoinedInputs}} },
+			[]string{ {{$function.JoinedOutputs}} },
+			{{$function.FunctionPackage}}.Wrapped{{$function.FunctionName}},
+		),{{end}}
+	}
+	// consume and publish forever
+	forever := make(chan bool)
+	services.ConsumeAndPublish(broker, serviceName)
+	<-forever
+}
+{{end}}
